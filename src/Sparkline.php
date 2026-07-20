@@ -116,7 +116,7 @@ class Sparkline
             $seriesNormalized = $this->getNormalizedData($seriesIndex);
             list($polygon, $line) = $this->getChartElements($seriesNormalized, $stepCount);
             $picture->applyPolygon($polygon, $this->getFillColor($seriesIndex), $count);
-            $picture->applyLine($line, $this->getLineColor($seriesIndex));
+            $picture->applyLine($line, $this->getLineColor($seriesIndex), $this->getLineStyle($seriesIndex));
 
             foreach ($this->points as $point) {
                 if ($point['series'] != $seriesIndex) {
