@@ -205,7 +205,6 @@ trait FormatTrait
     {
         $step = $this->getStepWidth($count);
         $height = $this->getInnerNormalizedHeight();
-        $width = $this->getInnerNormalizedWidth();
         $normalizedPadding = $this->getNormalizedPadding();
         $data = $this->getDataForChartElements($data, $height);
 
@@ -214,40 +213,37 @@ trait FormatTrait
             $bottomData = $this->getDataForChartElements($originSeries, $height);
         }
 
-        $pictureX1 = $pictureX2 = (int)ceil($normalizedPadding['left']);
-        $pictureY1 = (int)ceil($normalizedPadding['top'] + $height - $data[0]);
-
+        $leftEdge = (int)round($normalizedPadding['left']);
         $polygon = [];
         $line = [];
         $topPoints = [];
 
-        // First top point
-        $topPoints[] = [$pictureX1, $pictureY1];
+        $pictureX = $leftEdge;
+        $pictureY = (int)ceil($normalizedPadding['top'] + $height - $data[0]);
+        $topPoints[] = [$pictureX, $pictureY];
 
         for ($i = 1; $i < count($data); ++$i) {
-            $pictureX2 = min((int)ceil($pictureX1 + $step), $normalizedPadding['right'] + $width);
-            $pictureY2 = min((int)ceil($normalizedPadding['top'] + $height - $data[$i]), $normalizedPadding['top'] + $height);
+            $prevX = $pictureX;
+            $prevY = $pictureY;
 
-            $line[] = [$pictureX1, $pictureY1, $pictureX2, $pictureY2];
-            $topPoints[] = [$pictureX2, $pictureY2];
+            // Compute x directly to avoid accumulated rounding error
+            $pictureX = (int)round($leftEdge + $i * $step);
+            $pictureY = (int)ceil($normalizedPadding['top'] + $height - $data[$i]);
 
-            $pictureX1 = $pictureX2;
-            $pictureY1 = $pictureY2;
+            $line[] = [$prevX, $prevY, $pictureX, $pictureY];
+            $topPoints[] = [$pictureX, $pictureY];
         }
 
-        // Build polygon: top curve left-to-right, then bottom curve right-to-left
         foreach ($topPoints as [$x, $y]) {
             $polygon[] = $x;
             $polygon[] = $y;
         }
 
         if ($hasOriginSeries) {
-            // Trace the bottom curve in reverse to close the filled shape
-            $bottomX = $normalizedPadding['left'];
             $bottomPoints = [];
             for ($i = 0; $i < count($bottomData); ++$i) {
-                $bx = min((int)ceil($normalizedPadding['left'] + $i * $step), $normalizedPadding['right'] + $width);
-                $by = min((int)ceil($normalizedPadding['top'] + $height - $bottomData[$i]), $normalizedPadding['top'] + $height);
+                $bx = (int)round($leftEdge + $i * $step);
+                $by = (int)ceil($normalizedPadding['top'] + $height - $bottomData[$i]);
                 $bottomPoints[] = [$bx, $by];
             }
             foreach (array_reverse($bottomPoints) as [$x, $y]) {
@@ -255,10 +251,9 @@ trait FormatTrait
                 $polygon[] = $y;
             }
         } else {
-            // Flat baseline: bottom-right then bottom-left
-            $polygon[] = $pictureX2;
+            $polygon[] = $pictureX;
             $polygon[] = $normalizedPadding['top'] + $height;
-            $polygon[] = $normalizedPadding['left'];
+            $polygon[] = $leftEdge;
             $polygon[] = $normalizedPadding['top'] + $height;
         }
 
