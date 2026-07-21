@@ -10,7 +10,8 @@ trait DataTrait
     protected $base;
 
     /**
-     * @var int Original value of chart
+     * Scalar float (legacy) or per-series arrays of per-point floor values.
+     * @var float|float[][]
      */
     protected $originValue = 0;
 
@@ -30,11 +31,23 @@ trait DataTrait
     }
 
     /**
-     * @param float $originValue Set origin value of chart
+     * Set per-point floor values per series, mirroring setData().
+     * Each argument is an array of floor values for one series.
+     * A scalar call setOriginValue(5.0) is also still accepted for all-series use.
+     *
+     * @param float|array ...$seriesOrigins
      */
-    public function setOriginValue(float $originValue)
+    public function setOriginValue(...$seriesOrigins)
     {
-        $this->originValue = $originValue;
+        if (count($seriesOrigins) === 1 && !is_array($seriesOrigins[0])) {
+            $this->originValue = (float)$seriesOrigins[0];
+            return;
+        }
+
+        $this->originValue = [];
+        foreach ($seriesOrigins as $data) {
+            $this->originValue[] = array_values((array)$data);
+        }
     }
 
     /**
@@ -84,10 +97,38 @@ trait DataTrait
     {
         $data = $this->data[$seriesIndex];
         foreach ($data as $i => $value) {
-            $data[$i] = max(0, $value - $this->originValue);
+            $floor = $this->getOriginValueForPoint($seriesIndex, $i);
+            $data[$i] = max(0, $value - $floor);
         }
 
         return $data;
+    }
+
+    /**
+     * @param int $seriesIndex
+     * @return array Floor values matching the series data length, or all-zeros if none set.
+     */
+    public function getOriginSeries(int $seriesIndex = 0): array
+    {
+        if (!is_array($this->originValue)) {
+            return [];
+        }
+
+        return $this->originValue[$seriesIndex] ?? [];
+    }
+
+    /**
+     * @param int $seriesIndex
+     * @param int $pointIndex
+     * @return float
+     */
+    protected function getOriginValueForPoint(int $seriesIndex, int $pointIndex): float
+    {
+        if (is_array($this->originValue)) {
+            return (float)($this->originValue[$seriesIndex][$pointIndex] ?? 0);
+        }
+
+        return (float)$this->originValue;
     }
 
     /**
@@ -145,6 +186,14 @@ trait DataTrait
     {
         if ($this->base) {
             return $this->base;
+        }
+
+        if (is_array($this->originValue)) {
+            // Denominator is max(top) - min(floor) so the range fills the chart
+            $topMax = max(array_map('max', $this->data));
+            $floors = array_merge(...array_values($this->originValue));
+            $floorMin = $floors ? min($floors) : 0;
+            return $topMax - $floorMin;
         }
 
         $maxes = array_map('max', $this->data);

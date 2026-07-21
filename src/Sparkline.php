@@ -114,7 +114,8 @@ class Sparkline
 
         foreach ($this->data as $seriesIndex => $series) {
             $seriesNormalized = $this->getNormalizedData($seriesIndex);
-            list($polygon, $line) = $this->getChartElements($seriesNormalized, $stepCount);
+            $originSeries = $this->getOriginSeries($seriesIndex);
+            list($polygon, $line) = $this->getChartElements($seriesNormalized, $stepCount, $originSeries);
             $picture->applyPolygon($polygon, $this->getFillColor($seriesIndex), $count);
             $picture->applyLine($line, $this->getLineColor($seriesIndex), $this->getLineStyle($seriesIndex));
 

@@ -198,9 +198,10 @@ trait FormatTrait
     /**
      * @param array $data
      * @param int $count count of steps in sparkline image (does not have to == count($data))
+     * @param array $originSeries per-point floor values (empty = flat chart bottom)
      * @return array
      */
-    protected function getChartElements(array $data, int $count): array
+    protected function getChartElements(array $data, int $count, array $originSeries = []): array
     {
         $step = $this->getStepWidth($count);
         $height = $this->getInnerNormalizedHeight();
@@ -208,33 +209,58 @@ trait FormatTrait
         $normalizedPadding = $this->getNormalizedPadding();
         $data = $this->getDataForChartElements($data, $height);
 
+        $hasOriginSeries = !empty($originSeries);
+        if ($hasOriginSeries) {
+            $bottomData = $this->getDataForChartElements($originSeries, $height);
+        }
+
         $pictureX1 = $pictureX2 = (int)ceil($normalizedPadding['left']);
         $pictureY1 = (int)ceil($normalizedPadding['top'] + $height - $data[0]);
 
         $polygon = [];
         $line = [];
+        $topPoints = [];
 
-        // Initialize
-        $polygon[] = $normalizedPadding['left'];
-        $polygon[] = $normalizedPadding['top'] + $height;
-        // First element
-        $polygon[] = $pictureX1;
-        $polygon[] = $pictureY1;
+        // First top point
+        $topPoints[] = [$pictureX1, $pictureY1];
+
         for ($i = 1; $i < count($data); ++$i) {
             $pictureX2 = min((int)ceil($pictureX1 + $step), $normalizedPadding['right'] + $width);
             $pictureY2 = min((int)ceil($normalizedPadding['top'] + $height - $data[$i]), $normalizedPadding['top'] + $height);
 
             $line[] = [$pictureX1, $pictureY1, $pictureX2, $pictureY2];
-
-            $polygon[] = $pictureX2;
-            $polygon[] = $pictureY2;
+            $topPoints[] = [$pictureX2, $pictureY2];
 
             $pictureX1 = $pictureX2;
             $pictureY1 = $pictureY2;
         }
-        // Last
-        $polygon[] = $pictureX2;
-        $polygon[] = $normalizedPadding['top'] + $height;
+
+        // Build polygon: top curve left-to-right, then bottom curve right-to-left
+        foreach ($topPoints as [$x, $y]) {
+            $polygon[] = $x;
+            $polygon[] = $y;
+        }
+
+        if ($hasOriginSeries) {
+            // Trace the bottom curve in reverse to close the filled shape
+            $bottomX = $normalizedPadding['left'];
+            $bottomPoints = [];
+            for ($i = 0; $i < count($bottomData); ++$i) {
+                $bx = min((int)ceil($normalizedPadding['left'] + $i * $step), $normalizedPadding['right'] + $width);
+                $by = min((int)ceil($normalizedPadding['top'] + $height - $bottomData[$i]), $normalizedPadding['top'] + $height);
+                $bottomPoints[] = [$bx, $by];
+            }
+            foreach (array_reverse($bottomPoints) as [$x, $y]) {
+                $polygon[] = $x;
+                $polygon[] = $y;
+            }
+        } else {
+            // Flat baseline: bottom-right then bottom-left
+            $polygon[] = $pictureX2;
+            $polygon[] = $normalizedPadding['top'] + $height;
+            $polygon[] = $normalizedPadding['left'];
+            $polygon[] = $normalizedPadding['top'] + $height;
+        }
 
         return [$polygon, $line];
     }
