@@ -224,6 +224,30 @@ class SparklineTest extends SparklinePHPUnit
         $this->assertEquals([], $this->sparkline->getLineStyle(1));
     }
 
+    public function testDeactivateLine()
+    {
+        $this->sparkline->deactivateLine(0);
+        $this->assertTrue($this->sparkline->isLineDeactivated(0));
+        $this->assertFalse($this->sparkline->isLineDeactivated(1));
+    }
+
+    public function testDeactivateLine_perSeries()
+    {
+        $this->sparkline->deactivateLine(1);
+        $this->assertFalse($this->sparkline->isLineDeactivated(0));
+        $this->assertTrue($this->sparkline->isLineDeactivated(1));
+    }
+
+    public function testDeactivateLine_doesNotDrawLine()
+    {
+        $path = __DIR__ . '/data/testGenerateNoLine.png';
+        $this->sparkline->setData([2, 5, 4, 6]);
+        $this->sparkline->deactivateLine(0);
+        $this->sparkline->save($path);
+        $this->assertFileExists($path);
+        unlink($path);
+    }
+
     public function testSetOriginValue_scalar()
     {
         $this->sparkline->setOriginValue(5.0);

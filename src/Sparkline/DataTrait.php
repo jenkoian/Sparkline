@@ -10,7 +10,7 @@ trait DataTrait
     protected $base;
 
     /**
-     * Scalar float (legacy) or per-series arrays of per-point floor values.
+     * Scalar float or per-series arrays of per-point floor values.
      * @var float|float[][]
      */
     protected $originValue = 0;
@@ -96,9 +96,9 @@ trait DataTrait
     public function getNormalizedData(int $seriesIndex = 0): array
     {
         $data = $this->data[$seriesIndex];
+        $originMin = $this->getOriginMin();
         foreach ($data as $i => $value) {
-            $floor = $this->getOriginValueForPoint($seriesIndex, $i);
-            $data[$i] = max(0, $value - $floor);
+            $data[$i] = max(0, $value - $originMin);
         }
 
         return $data;
@@ -106,7 +106,7 @@ trait DataTrait
 
     /**
      * @param int $seriesIndex
-     * @return array Floor values matching the series data length, or all-zeros if none set.
+     * @return array Floor values matching the series data length, or empty if none set.
      */
     public function getOriginSeries(int $seriesIndex = 0): array
     {
@@ -115,6 +115,23 @@ trait DataTrait
         }
 
         return $this->originValue[$seriesIndex] ?? [];
+    }
+
+    /**
+     * Floor values shifted by getOriginMin() so they are in the same coordinate
+     * space as getNormalizedData() — ready to pass to getDataForChartElements().
+     * @param int $seriesIndex
+     * @return array
+     */
+    public function getNormalizedOriginSeries(int $seriesIndex = 0): array
+    {
+        $series = $this->getOriginSeries($seriesIndex);
+        if (empty($series)) {
+            return [];
+        }
+
+        $min = $this->getOriginMin();
+        return array_map(fn($v) => max(0, $v - $min), $series);
     }
 
     /**
@@ -184,20 +201,22 @@ trait DataTrait
      */
     protected function getMaxValueAcrossSeries(): float
     {
-        if ($this->base) {
-            return $this->base;
-        }
+        $topMax = $this->base ?? max(array_map('max', $this->data));
+        return $topMax - $this->getOriginMin();
+    }
 
+    /**
+     * The minimum floor value across all series — used as the y-axis origin.
+     * @return float
+     */
+    protected function getOriginMin(): float
+    {
         if (is_array($this->originValue)) {
-            // Denominator is max(top) - min(floor) so the range fills the chart
-            $topMax = max(array_map('max', $this->data));
             $floors = array_merge(...array_values($this->originValue));
-            $floorMin = $floors ? min($floors) : 0;
-            return $topMax - $floorMin;
+            return $floors ? min($floors) : 0;
         }
 
-        $maxes = array_map('max', $this->data);
-        return max($maxes);
+        return (float)$this->originValue;
     }
 
     protected function getMaxNumberOfDataPointsAcrossSerieses()
