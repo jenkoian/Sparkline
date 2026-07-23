@@ -186,7 +186,7 @@ trait FormatTrait
             if ($value <= 0) {
                 $value = 0;
             }
-            if ($value > 0) {
+            if ($value > 0 && $max > 0) {
                 $value = round(($value / $max) * $height);
             }
             $data[$i] = max($minHeight, min($value, $maxHeight));
