@@ -38,6 +38,12 @@ trait StyleTrait
     protected $lineThickness = 1.75;
 
     /**
+     * Per-series line dash patterns: [] = solid, [on, off] = dashed
+     * @var int[][]
+     */
+    protected $lineStyle = [];
+
+    /**
      * Set background to transparent.
      */
     public function deactivateBackgroundColor()
@@ -91,6 +97,33 @@ trait StyleTrait
     public function setLineThickness(float $thickness)
     {
         $this->lineThickness = $thickness;
+    }
+
+    /**
+     * @param string $style 'solid' or 'dashed'
+     * @param int $seriesIndex
+     */
+    public function setLineStyle(string $style, int $seriesIndex = 0)
+    {
+        $patterns = [
+            'solid'  => [],
+            'dashed' => [1, 1],
+        ];
+
+        if (!array_key_exists($style, $patterns)) {
+            throw new InvalidArgumentException('Invalid line style: ' . $style . '. Must be solid or dashed.');
+        }
+
+        $this->lineStyle[$seriesIndex] = $patterns[$style];
+    }
+
+    /**
+     * @param int $seriesIndex
+     * @return array [onPx, offPx] or [] for solid
+     */
+    public function getLineStyle(int $seriesIndex = 0): array
+    {
+        return $this->lineStyle[$seriesIndex] ?? [];
     }
 
     /**

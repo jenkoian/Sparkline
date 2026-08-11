@@ -184,6 +184,46 @@ class SparklineTest extends SparklinePHPUnit
         $this->assertEquals(2.5, $lineThickness);
     }
 
+    public function testSetLineStyle_invalid()
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->sparkline->setLineStyle('wavy');
+    }
+
+    public function testSetLineStyle_solid()
+    {
+        $this->sparkline->setLineStyle('solid');
+        $lineStyle = $this->sparkline->getAttribute('lineStyle');
+        $this->assertEquals([0 => []], $lineStyle);
+    }
+
+    public function testSetLineStyle_dashed()
+    {
+        $this->sparkline->setLineStyle('dashed');
+        $lineStyle = $this->sparkline->getAttribute('lineStyle');
+        $this->assertEquals([0 => [1, 1]], $lineStyle);
+    }
+
+    public function testSetLineStyle_perSeries()
+    {
+        $this->sparkline->setLineStyle('dashed', 0);
+        $this->sparkline->setLineStyle('solid', 1);
+        $lineStyle = $this->sparkline->getAttribute('lineStyle');
+        $this->assertEquals([0 => [1, 1], 1 => []], $lineStyle);
+    }
+
+    public function testGetLineStyle_default()
+    {
+        $this->assertEquals([], $this->sparkline->getLineStyle());
+    }
+
+    public function testGetLineStyle_unset_series_defaults_to_solid()
+    {
+        $this->sparkline->setLineStyle('dashed', 0);
+        // Series 1 not set — should default to solid, not inherit series 0
+        $this->assertEquals([], $this->sparkline->getLineStyle(1));
+    }
+
     public function testSetData()
     {
         $this->sparkline->setData([]);

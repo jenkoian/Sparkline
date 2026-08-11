@@ -112,13 +112,26 @@ class Picture
     /**
      * @param array $line
      * @param array $lineColor
+     * @param array $segmentPattern [drawCount, skipCount] or [] for solid
      */
-    public function applyLine(array $line, array $lineColor)
+    public function applyLine(array $line, array $lineColor, array $segmentPattern = [])
     {
-        $lineColor = $this->getLineColor($lineColor);
-        foreach ($line as $coordinates) {
-            list($pictureX1, $pictureY1, $pictureX2, $pictureY2) = $coordinates;
-            imageline($this->resource, $pictureX1, $pictureY1, $pictureX2, $pictureY2, $lineColor);
+        $color = $this->getLineColor($lineColor);
+
+        if ($segmentPattern) {
+            [$draw, $skip] = $segmentPattern;
+            $period = $draw + $skip;
+            foreach ($line as $i => $coordinates) {
+                if (($i % $period) < $draw) {
+                    list($pictureX1, $pictureY1, $pictureX2, $pictureY2) = $coordinates;
+                    imageline($this->resource, $pictureX1, $pictureY1, $pictureX2, $pictureY2, $color);
+                }
+            }
+        } else {
+            foreach ($line as $coordinates) {
+                list($pictureX1, $pictureY1, $pictureX2, $pictureY2) = $coordinates;
+                imageline($this->resource, $pictureX1, $pictureY1, $pictureX2, $pictureY2, $color);
+            }
         }
     }
 
